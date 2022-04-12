@@ -1,0 +1,42 @@
+ 8                                         ! number of structures
+001.inp
+002.inp
+003.inp
+004.inp
+4001.inp
+4002.inp
+4003.inp
+4004.inp
+! Write out options - leave this line as comment line or null
+&OUTPUT
+iwriteout_ME_SandH = 0
+iwriteout_density = 0
+iwriteout_cdcoeffs = 0
+iwriteout_charges = 0
+iwriteout_populations = 0
+iwriteout_energies = 0
+iwriteout_forces = 0
+iwriteout_neighbors = 0
+iwriteout_dos = 0 
+iwriteout_abs = 0 
+iwriteout_xyz = 0
+iwriteout_ewf = 0
+&END
+&OPTIONS
+nstepi = 1
+nstepf = 200
+iquench = 0
+iensemble = 0
+T_initial = 300.0d0
+T_final = 0.0d0
+taurelax = 5.0d0
+iconstraint_rcm = 1
+iconstraint_vcm = 1
+iconstraint_L = 1
+iconstraint_KE = 1
+ifix_neighbors = 0
+max_scf_iterations_set = 100
+scf_tolerance_set = 1.0d-8
+beta_set = 0.04
+Ecut_set = 200.0d0
+&END

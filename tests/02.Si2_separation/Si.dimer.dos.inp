@@ -1,0 +1,4 @@
+   151                         ! number of energy grid points 
+   1, 2                        ! include which atoms in the DOS
+  -20.0, 0.1                   ! minimum energy value and step size
+   0.05                        ! eta, imaginary part of Green's function

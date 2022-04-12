@@ -1,0 +1,18 @@
+ 1
+001.inp
+! Write out options - leave this line as comment line or null
+&OUTPUT
+iwriteout_ME_SandH = 1
+iwriteout_density = 0
+iwriteout_cdcoeffs = 1
+iwriteout_charges = 0
+iwriteout_neighbors = 0
+iwriteout_dos = 0
+iwriteout_abs = 0
+&END
+&OPTIONS
+iconstraint_L = 0
+max_scf_iterations_set = 100
+scf_tolerance_set = 1.0d-8
+beta_set = 0.04
+&END
