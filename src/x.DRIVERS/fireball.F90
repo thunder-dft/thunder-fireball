@@ -352,7 +352,7 @@
               call density_matrix (s)
               if (iwriteout_density .eq. 1) call writeout_density (s)
 
-              call calculate_charges (s)
+              if (ifix_CHARGES .ne. 1) call calculate_charges (s)
               if (iwriteout_charges .eq. 1) call writeout_charges (s)
               call Qmixer (s, iscf_iteration, sigma)
 
