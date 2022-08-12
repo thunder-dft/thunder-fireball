@@ -1,4 +1,4 @@
-# thunder-lightning
+# thunder-fireball
 This repository contains the sources to create two drivers:
 
 fireball.x and fireball-MDET.x
