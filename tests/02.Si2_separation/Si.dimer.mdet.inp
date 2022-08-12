@@ -1,4 +1,0 @@
-3                                 ! ntransition (number of states where switches are possible)                          !ok
-4  0.5  0                           ! norbital occupation cna_pop
-5  0.5  1
-6  0  0
