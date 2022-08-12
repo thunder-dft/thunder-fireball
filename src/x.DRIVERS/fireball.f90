@@ -330,7 +330,7 @@
               write (s%logfile, *) ' Three-center charge dependent assemblers. '
               call assemble_vna_3c (s)
 
-              write (s%logfile, *) ' Exchange-correlation Dassemblers. '
+              write (s%logfile, *) ' Exchange-correlation assemblers. '
               call assemble_vxc (s)
 
 ! ===========================================================================
@@ -400,6 +400,7 @@
             write (s%logfile, *) ' Two-center non-charge dependent Dassemblers.'
             call Dassemble_S (s)
             call Dassemble_T (s)
+            call Dassemble_dipole_z (s)
             call Dassemble_svnl (s)
             call Dassemble_vnl_2c (s)
 
