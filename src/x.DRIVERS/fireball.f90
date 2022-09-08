@@ -362,12 +362,9 @@
 ! ===========================================================================
 ! short-range interactions (double-counting interactions)
               call calculate_ebs (s, ebs)
-              uii_uee = 0.0d0; uxcdcc = 0.0d0
               call assemble_uee (s, uii_uee)
               call assemble_uxc (s, uxcdcc)
-
-              ! Evaluate total energy
-              etot = ebs + uii_uee + uxcdcc
+              call writeout_energies (s, ebs, uii_uee, uxcdcc)
 
 ! End scf loop
               if (sigma .gt. 0.0d0) then
@@ -377,8 +374,6 @@
               end if
               if (ifix_CHARGES .eq. 1) exit
             end do ! End scf loop
-
-            call writeout_energies (s, ebs, uii_uee, uxcdcc)
             if (iwriteout_xyz .eq. 1) call writeout_xyz (s, ebs, uii_uee, uxcdcc)
 
 ! ===========================================================================
