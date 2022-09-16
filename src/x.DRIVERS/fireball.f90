@@ -276,9 +276,6 @@
 ! Molecular-dynamics loop
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
-! FIXME - We set nstepi and nstepf here!
-          !nstepi = 1
-          !nstepf = 100
           call set_gear ()
           do itime_step = nstepi, nstepf
             write (s%logfile, *)
@@ -311,11 +308,17 @@
             write (s%logfile,*) ' Three-center non-charge dependent assemblers.'
             call assemble_vnl_3c (s)
 
-! Put scf loop here
+! ===========================================================================
+! ---------------------------------------------------------------------------
+!              S C F   L O O P
+! ---------------------------------------------------------------------------
+! Note that self-consistency is preformed regardless of method used.
+! But, in Harris, we just do a single scf cycle.
+! ===========================================================================
             sigma = 999.0d0
             iscf_iteration = 1
-            do while (sigma .gt. scf_tolerance_set .and.                     &
-      &               iscf_iteration .le. max_scf_iterations_set)
+            do while (sigma .gt. scf_tolerance_set .and.                      &
+      &               iscf_iteration .le. max_scf_iterations_set - 1)
               write (s%logfile, *)
               write (s%logfile, '(A, I5, A7, I5, A1)') 'Self-Consistent Field step: ', &
                    & iscf_iteration, ' (max: ', max_scf_iterations_set, ')'
@@ -345,7 +348,6 @@
               call cpu_time(timef)
               write (s%logfile, *)
               write (s%logfile, *) ' kspace time: ', timef - timei
-
               call density_matrix (s)
               if (iwriteout_density .eq. 1) call writeout_density (s)
 
@@ -362,9 +364,12 @@
 ! ===========================================================================
 ! short-range interactions (double-counting interactions)
               call calculate_ebs (s, ebs)
+              uii_uee = 0.0d0; uxcdcc = 0.0d0
               call assemble_uee (s, uii_uee)
               call assemble_uxc (s, uxcdcc)
-              call writeout_energies (s, ebs, uii_uee, uxcdcc)
+
+              ! Evaluate total energy
+              etot = ebs + uii_uee + uxcdcc
 
 ! End scf loop
               if (sigma .gt. 0.0d0) then
@@ -373,7 +378,9 @@
                 exit
               end if
               if (ifix_CHARGES .eq. 1) exit
-            end do ! End scf loop
+            end do
+
+            call writeout_energies (s, ebs, uii_uee, uxcdcc)
             if (iwriteout_xyz .eq. 1) call writeout_xyz (s, ebs, uii_uee, uxcdcc)
 
 ! ===========================================================================
