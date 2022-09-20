@@ -5,3 +5,5 @@ python test-forces-HARRIS.py > test-forces.HARRIS.dat
 cp structures.forces-DOGS.inp structures.inp
 ./fireball.x
 python test-forces-DOGS.py > test-forces.DOGS.dat
+cp structures.000.inp structures.inp
+./fireball.x
