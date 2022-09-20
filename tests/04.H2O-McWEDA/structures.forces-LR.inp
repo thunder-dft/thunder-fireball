@@ -1,0 +1,119 @@
+ 100
+201.inp
+202.inp
+203.inp
+204.inp
+205.inp
+206.inp
+207.inp
+208.inp
+209.inp
+210.inp
+211.inp
+212.inp
+213.inp
+214.inp
+215.inp
+216.inp
+217.inp
+218.inp
+219.inp
+220.inp
+221.inp
+222.inp
+223.inp
+224.inp
+225.inp
+226.inp
+227.inp
+228.inp
+229.inp
+230.inp
+231.inp
+232.inp
+233.inp
+234.inp
+235.inp
+236.inp
+237.inp
+238.inp
+239.inp
+240.inp
+241.inp
+242.inp
+243.inp
+244.inp
+245.inp
+246.inp
+247.inp
+248.inp
+249.inp
+250.inp
+251.inp
+252.inp
+253.inp
+254.inp
+255.inp
+256.inp
+257.inp
+258.inp
+259.inp
+260.inp
+261.inp
+262.inp
+263.inp
+264.inp
+265.inp
+266.inp
+267.inp
+268.inp
+269.inp
+270.inp
+271.inp
+272.inp
+273.inp
+274.inp
+275.inp
+276.inp
+277.inp
+278.inp
+279.inp
+280.inp
+281.inp
+282.inp
+283.inp
+284.inp
+285.inp
+286.inp
+287.inp
+288.inp
+289.inp
+290.inp
+291.inp
+292.inp
+293.inp
+294.inp
+295.inp
+296.inp
+297.inp
+298.inp
+299.inp
+300.inp
+! Write out options - leave this line as comment line or null
+&OUTPUT
+iwriteout_ME_SandH = 1
+iwriteout_ENERGIES = 1
+iwriteout_density = 1
+iwriteout_forces = 1
+iwriteout_cdcoeffs = 0
+iwriteout_charges = 0
+iwriteout_neighbors = 0
+iwriteout_dos = 0
+iwriteout_abs = 0
+&END
+&OPTIONS
+iconstraint_L = 0
+max_scf_iterations_set = 50
+scf_tolerance_set = 1.0d-8
+beta_set = 0.08
+&END
