@@ -452,6 +452,10 @@
 ! ===========================================================================
             call destroy_kspace (s)
             call destroy_denmat (s)
+            call destroy_assemble_2c (s)
+            call destroy_assemble_PP_2c (s)
+            call destroy_assemble_ewald (s)
+            call destroy_Dassemble_ewald (s)
             call destroy_neighbors (s)
             call destroy_neighbors_PP (s)
           end do ! end molecular dynamics loop
