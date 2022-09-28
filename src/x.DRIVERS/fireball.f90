@@ -102,7 +102,9 @@
 
 ! Variable Declaration and Description
 ! ===========================================================================
-        integer iatom                        !< counter over atoms
+        integer iatom                           !< counter over atoms
+        integer ikpoint                         !< counter over kpoints
+
         integer iscf_iteration
         integer istructure, iseparate
         integer itime_step
@@ -371,6 +373,9 @@
               ! Evaluate total energy
               etot = ebs + uii_uee + uxcdcc
 
+! After building the density matrix, then we can free up the ewald memory
+              call destroy_assemble_ewald (s)
+
 ! End scf loop
               if (sigma .gt. 0.0d0) then
                 iscf_iteration = iscf_iteration + 1
@@ -378,6 +383,14 @@
                 exit
               end if
               if (ifix_CHARGES .eq. 1) exit
+
+              ! destroy the coefficients, but only if not converged
+              if (sigma .gt. scf_tolerance_set .and.                          &
+      &           iscf_iteration .le. max_scf_iterations_set - 1) then
+                do ikpoint = 1, s%nkpoints
+                  deallocate (s%kpoints(ikpoint)%c)
+                end do
+              end if
             end do
 
             call writeout_energies (s, ebs, uii_uee, uxcdcc)
@@ -392,6 +405,9 @@
             call initialize_forces (s)
             call densityPP_matrix (s)
             call cape_matrix (s)
+
+! After building the density matrix, then we can free up the kspace memory
+            call destroy_kspace (s)
 
             write (s%logfile, *)
             write (s%logfile,'(A)') 'Forces '
@@ -450,11 +466,13 @@
 !           Free memory in the molecular dynamics loop
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
-            call destroy_kspace (s)
             call destroy_denmat (s)
+            call destroy_Dassemble_2c (s)
             call destroy_assemble_2c (s)
+            call destroy_Dassemble_vxc (s)
+            call destroy_assemble_vxc (s)
+            call destroy_Dassemble_vnl (s)
             call destroy_assemble_PP_2c (s)
-            call destroy_assemble_ewald (s)
             call destroy_Dassemble_ewald (s)
             call destroy_neighbors (s)
             call destroy_neighbors_PP (s)
