@@ -103,6 +103,7 @@
 ! Variable Declaration and Description
 ! ===========================================================================
         integer iatom                           !< counter over atoms
+        integer ineigh                          !< counter over structures
         integer ikpoint                         !< counter over kpoints
 
         integer iscf_iteration
@@ -369,12 +370,35 @@
               uii_uee = 0.0d0; uxcdcc = 0.0d0
               call assemble_uee (s, uii_uee)
               call assemble_uxc (s, uxcdcc)
-
               ! Evaluate total energy
               etot = ebs + uii_uee + uxcdcc
 
-! After building the density matrix, then we can free up the ewald memory
+! After building the density matrix, then we can free up ewald and denmat arrays
+! - we reallocate these during the next SCF cycle anyways.
+! We also free up the vna and vxc arrays if this is not converged.
               call destroy_assemble_ewald (s)
+              if (sigma .gt. scf_tolerance_set .and.                          &
+      &           iscf_iteration .le. max_scf_iterations_set - 1) then
+                do iatom = 1, s%natoms
+                  do ineigh = 1, s%neighbors(iatom)%neighn
+                    deallocate (s%denmat(iatom)%neighbors(ineigh)%block)
+                    deallocate (s%vna(iatom)%neighbors(ineigh)%block)
+                    deallocate (s%vna(iatom)%neighbors(ineigh)%blocko)
+                    deallocate (s%vxc(iatom)%neighbors(ineigh)%block)
+                  end do
+                  deallocate (s%denmat(iatom)%neighbors)
+                  deallocate (s%vna(iatom)%neighbors)
+                  deallocate (s%vxc(iatom)%neighbors)
+                end do
+                deallocate (s%denmat)
+                deallocate (s%vna)
+                deallocate (s%vxc)
+
+                ! destroy the coefficients, but only if not converged
+                do ikpoint = 1, s%nkpoints
+                  deallocate (s%kpoints(ikpoint)%c)
+                end do
+              end if
 
 ! End scf loop
               if (sigma .gt. 0.0d0) then
@@ -383,14 +407,6 @@
                 exit
               end if
               if (ifix_CHARGES .eq. 1) exit
-
-              ! destroy the coefficients, but only if not converged
-              if (sigma .gt. scf_tolerance_set .and.                          &
-      &           iscf_iteration .le. max_scf_iterations_set - 1) then
-                do ikpoint = 1, s%nkpoints
-                  deallocate (s%kpoints(ikpoint)%c)
-                end do
-              end if
             end do
 
             call writeout_energies (s, ebs, uii_uee, uxcdcc)
