@@ -248,8 +248,6 @@
 ! Loop over all structures
 ! This loop can be made parallel if each subroutine in lightning
 ! is modified to take s as a parameter, rather than reference s directly
-!$omp parallel do private (s, slogfile, sigma, iscf_iteration, timei, timef) &
-!$omp             private (ebs, uii_uee, uxcdcc, etot)
         do istructure = 1, nstructures
           s => structures(istructure)
           read (1, *) s%basisfile
@@ -333,9 +331,11 @@
               call assemble_ewaldsr (s)
               call assemble_ewaldlr (s)
 
+              write (s%logfile, *)
               write (s%logfile, *) ' Three-center charge dependent assemblers. '
               call assemble_vna_3c (s)
 
+              write (s%logfile, *)
               write (s%logfile, *) ' Exchange-correlation assemblers. '
               call assemble_vxc (s)
 
@@ -345,12 +345,13 @@
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
 ! Calculating the overlap matrix in K space
+              write (s%logfile, *)
               write (s%logfile, *) ' Kspace '
               call cpu_time(timei)
               call driver_kspace (s, iscf_iteration)
               call cpu_time(timef)
-              write (s%logfile, *)
               write (s%logfile, *) ' kspace time: ', timef - timei
+
               call density_matrix (s)
               if (iwriteout_density .eq. 1) call writeout_density (s)
 
@@ -417,7 +418,7 @@
 !                               F O R C E S
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
-! Initialize forces arrays
+            call cpu_time(timei)
             call initialize_forces (s)
             call densityPP_matrix (s)
             call cape_matrix (s)
@@ -428,7 +429,6 @@
             write (s%logfile, *)
             write (s%logfile,'(A)') 'Forces '
             write (s%logfile,'(A)') '------ '
-            write (s%logfile, *)
 
 ! Assemble the derivative blocks needed for forces
             write (s%logfile, *) ' Two-center non-charge dependent Dassemblers.'
@@ -438,17 +438,20 @@
             call Dassemble_svnl (s)
             call Dassemble_vnl_2c (s)
 
+            write (s%logfile, *)
             write (s%logfile, *) ' Two-center charge dependent Dassemblers.'
             call Dassemble_vna_2c (s)
             call Dassemble_ewaldsr (s)
             call Dassemble_ewaldlr (s)
 
+            write (s%logfile, *)
             write (s%logfile,*) ' Three-center non-charge dependent assemblers.'
             call Dassemble_vnl_3c (s)
 
             write (s%logfile,*) ' Three-center charge dependent Dassemblers.'
             call Dassemble_vna_3c (s)
 
+            write (s%logfile, *)
             write (s%logfile, *) ' Exchange-correlation Dassemblers. '
             call Dassemble_vxc (s)
 
@@ -465,6 +468,10 @@
               write (s%logfile, 512)  iatom, s%forces(iatom)%ftot
             end do
             call md (s, itime_step)
+            call cpu_time(timef)
+
+            write (s%logfile, *)
+            write (s%logfile, *) ' FORCES time: ', timef - timei
 
             write (s%logfile, *)
             write (s%logfile, '(A)') ' Grand Total Energy '
@@ -490,6 +497,7 @@
             call destroy_Dassemble_vnl (s)
             call destroy_assemble_PP_2c (s)
             call destroy_Dassemble_ewald (s)
+            call destroy_forces (s)
             call destroy_neighbors (s)
             call destroy_neighbors_PP (s)
           end do ! end molecular dynamics loop
