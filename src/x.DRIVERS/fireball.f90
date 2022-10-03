@@ -103,6 +103,7 @@
 ! Variable Declaration and Description
 ! ===========================================================================
         integer iatom                           !< counter over atoms
+        integer ineigh                          !< counter over structures
         integer ikpoint                         !< counter over kpoints
 
         integer iscf_iteration
@@ -247,8 +248,6 @@
 ! Loop over all structures
 ! This loop can be made parallel if each subroutine in lightning
 ! is modified to take s as a parameter, rather than reference s directly
-!$omp parallel do private (s, slogfile, sigma, iscf_iteration, timei, timef) &
-!$omp             private (ebs, uii_uee, uxcdcc, etot)
         do istructure = 1, nstructures
           s => structures(istructure)
           read (1, *) s%basisfile
@@ -332,9 +331,11 @@
               call assemble_ewaldsr (s)
               call assemble_ewaldlr (s)
 
+              write (s%logfile, *)
               write (s%logfile, *) ' Three-center charge dependent assemblers. '
               call assemble_vna_3c (s)
 
+              write (s%logfile, *)
               write (s%logfile, *) ' Exchange-correlation assemblers. '
               call assemble_vxc (s)
 
@@ -344,12 +345,13 @@
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
 ! Calculating the overlap matrix in K space
+              write (s%logfile, *)
               write (s%logfile, *) ' Kspace '
               call cpu_time(timei)
               call driver_kspace (s, iscf_iteration)
               call cpu_time(timef)
-              write (s%logfile, *)
               write (s%logfile, *) ' kspace time: ', timef - timei
+
               call density_matrix (s)
               if (iwriteout_density .eq. 1) call writeout_density (s)
 
@@ -369,12 +371,35 @@
               uii_uee = 0.0d0; uxcdcc = 0.0d0
               call assemble_uee (s, uii_uee)
               call assemble_uxc (s, uxcdcc)
-
               ! Evaluate total energy
               etot = ebs + uii_uee + uxcdcc
 
-! After building the density matrix, then we can free up the ewald memory
+! After building the density matrix, then we can free up ewald and denmat arrays
+! - we reallocate these during the next SCF cycle anyways.
+! We also free up the vna and vxc arrays if this is not converged.
               call destroy_assemble_ewald (s)
+              if (sigma .gt. scf_tolerance_set .and.                          &
+      &           iscf_iteration .le. max_scf_iterations_set - 1) then
+                do iatom = 1, s%natoms
+                  do ineigh = 1, s%neighbors(iatom)%neighn
+                    deallocate (s%denmat(iatom)%neighbors(ineigh)%block)
+                    deallocate (s%vna(iatom)%neighbors(ineigh)%block)
+                    deallocate (s%vna(iatom)%neighbors(ineigh)%blocko)
+                    deallocate (s%vxc(iatom)%neighbors(ineigh)%block)
+                  end do
+                  deallocate (s%denmat(iatom)%neighbors)
+                  deallocate (s%vna(iatom)%neighbors)
+                  deallocate (s%vxc(iatom)%neighbors)
+                end do
+                deallocate (s%denmat)
+                deallocate (s%vna)
+                deallocate (s%vxc)
+
+                ! destroy the coefficients, but only if not converged
+                do ikpoint = 1, s%nkpoints
+                  deallocate (s%kpoints(ikpoint)%c)
+                end do
+              end if
 
 ! End scf loop
               if (sigma .gt. 0.0d0) then
@@ -383,14 +408,6 @@
                 exit
               end if
               if (ifix_CHARGES .eq. 1) exit
-
-              ! destroy the coefficients, but only if not converged
-              if (sigma .gt. scf_tolerance_set .and.                          &
-      &           iscf_iteration .le. max_scf_iterations_set - 1) then
-                do ikpoint = 1, s%nkpoints
-                  deallocate (s%kpoints(ikpoint)%c)
-                end do
-              end if
             end do
 
             call writeout_energies (s, ebs, uii_uee, uxcdcc)
@@ -401,7 +418,7 @@
 !                               F O R C E S
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
-! Initialize forces arrays
+            call cpu_time(timei)
             call initialize_forces (s)
             call densityPP_matrix (s)
             call cape_matrix (s)
@@ -412,7 +429,6 @@
             write (s%logfile, *)
             write (s%logfile,'(A)') 'Forces '
             write (s%logfile,'(A)') '------ '
-            write (s%logfile, *)
 
 ! Assemble the derivative blocks needed for forces
             write (s%logfile, *) ' Two-center non-charge dependent Dassemblers.'
@@ -422,17 +438,20 @@
             call Dassemble_svnl (s)
             call Dassemble_vnl_2c (s)
 
+            write (s%logfile, *)
             write (s%logfile, *) ' Two-center charge dependent Dassemblers.'
             call Dassemble_vna_2c (s)
             call Dassemble_ewaldsr (s)
             call Dassemble_ewaldlr (s)
 
+            write (s%logfile, *)
             write (s%logfile,*) ' Three-center non-charge dependent assemblers.'
             call Dassemble_vnl_3c (s)
 
             write (s%logfile,*) ' Three-center charge dependent Dassemblers.'
             call Dassemble_vna_3c (s)
 
+            write (s%logfile, *)
             write (s%logfile, *) ' Exchange-correlation Dassemblers. '
             call Dassemble_vxc (s)
 
@@ -449,6 +468,10 @@
               write (s%logfile, 512)  iatom, s%forces(iatom)%ftot
             end do
             call md (s, itime_step)
+            call cpu_time(timef)
+
+            write (s%logfile, *)
+            write (s%logfile, *) ' FORCES time: ', timef - timei
 
             write (s%logfile, *)
             write (s%logfile, '(A)') ' Grand Total Energy '
@@ -474,6 +497,7 @@
             call destroy_Dassemble_vnl (s)
             call destroy_assemble_PP_2c (s)
             call destroy_Dassemble_ewald (s)
+            call destroy_forces (s)
             call destroy_neighbors (s)
             call destroy_neighbors_PP (s)
           end do ! end molecular dynamics loop
