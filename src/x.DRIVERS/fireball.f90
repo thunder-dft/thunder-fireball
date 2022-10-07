@@ -54,6 +54,7 @@
 ! /SYSTEM
         use M_species
         use M_configuraciones
+        use M_kpoints
         use M_neighbors
         use M_neighbors_PP
         use M_atom_functions
@@ -102,9 +103,7 @@
 
 ! Variable Declaration and Description
 ! ===========================================================================
-        integer iatom                           !< counter over atoms
-        integer ineigh                          !< counter over structures
-        integer ikpoint                         !< counter over kpoints
+        integer iatom                     !< counter over atoms and neighbors
 
         integer iscf_iteration
         integer istructure, iseparate
@@ -115,9 +114,10 @@
 ! --------------------------------------------------------------------------
 ! Timer (Intel Fortran)
 ! --------------------------------------------------------------------------
-        real time_begin
-        real time_end
-        real timei, timef
+        real time_begin, time_end
+        real time_scf_begin, time_scf_end
+        real time_forces_begin, time_forces_end
+        real time_initial, time_final
 
 ! Energies
         real ebs                                 ! band-structure energy
@@ -320,6 +320,7 @@
             iscf_iteration = 1
             do while (sigma .gt. scf_tolerance_set .and.                      &
       &               iscf_iteration .le. max_scf_iterations_set - 1)
+              call cpu_time (time_scf_begin)
               write (s%logfile, *)
               write (s%logfile, '(A, I5, A7, I5, A1)') 'Self-Consistent Field step: ', &
                    & iscf_iteration, ' (max: ', max_scf_iterations_set, ')'
@@ -331,6 +332,7 @@
               call assemble_ewaldsr (s)
               call assemble_ewaldlr (s)
 
+              call cpu_time (time_initial)
               write (s%logfile, *)
               write (s%logfile, *) ' Three-center charge dependent assemblers. '
               call assemble_vna_3c (s)
@@ -338,6 +340,9 @@
               write (s%logfile, *)
               write (s%logfile, *) ' Exchange-correlation assemblers. '
               call assemble_vxc (s)
+
+              call cpu_time (time_final)
+              write (s%logfile, *) ' vna_3c, vxc time: ', time_final - time_initial
 
 ! ===========================================================================
 ! ---------------------------------------------------------------------------
@@ -347,13 +352,12 @@
 ! Calculating the overlap matrix in K space
               write (s%logfile, *)
               write (s%logfile, *) ' Kspace '
-              call cpu_time(timei)
+              call cpu_time (time_initial)
               call driver_kspace (s, iscf_iteration)
-              call cpu_time(timef)
-              write (s%logfile, *) ' kspace time: ', timef - timei
-
               call density_matrix (s)
               if (iwriteout_density .eq. 1) call writeout_density (s)
+              call cpu_time (time_final)
+              write (s%logfile, *) ' kspace time: ', time_final - time_initial
 
               if (ifix_CHARGES .ne. 1) then
                 call calculate_charges (s)
@@ -374,34 +378,23 @@
               ! Evaluate total energy
               etot = ebs + uii_uee + uxcdcc
 
+              if (sigma .gt. scf_tolerance_set .and.                      &
+      &           iscf_iteration .le. max_scf_iterations_set - 1 .and.    &
+      &           ifix_CHARGES .ne. 1) then
+                write (s%logfile, *) ' Destroy some SCF arrays... '
+                call destroy_denmat (s)
+                call destroy_assemble_ewald (s)
+                call destroy_assemble_vxc (s)
+                call destroy_assemble_vna (s)
+              end if
+              call cpu_time (time_scf_end)
+              write (s%logfile, *)
+              write (s%logfile, *) ' SCF ENERGY time: ', time_scf_end - time_scf_begin
+
+! End scf loop
 ! After building the density matrix, then we can free up ewald and denmat arrays
 ! - we reallocate these during the next SCF cycle anyways.
 ! We also free up the vna and vxc arrays if this is not converged.
-              call destroy_assemble_ewald (s)
-              if (sigma .gt. scf_tolerance_set .and.                          &
-      &           iscf_iteration .le. max_scf_iterations_set - 1) then
-                do iatom = 1, s%natoms
-                  do ineigh = 1, s%neighbors(iatom)%neighn
-                    deallocate (s%denmat(iatom)%neighbors(ineigh)%block)
-                    deallocate (s%vna(iatom)%neighbors(ineigh)%block)
-                    deallocate (s%vna(iatom)%neighbors(ineigh)%blocko)
-                    deallocate (s%vxc(iatom)%neighbors(ineigh)%block)
-                  end do
-                  deallocate (s%denmat(iatom)%neighbors)
-                  deallocate (s%vna(iatom)%neighbors)
-                  deallocate (s%vxc(iatom)%neighbors)
-                end do
-                deallocate (s%denmat)
-                deallocate (s%vna)
-                deallocate (s%vxc)
-
-                ! destroy the coefficients, but only if not converged
-                do ikpoint = 1, s%nkpoints
-                  deallocate (s%kpoints(ikpoint)%c)
-                end do
-              end if
-
-! End scf loop
               if (sigma .gt. 0.0d0) then
                 iscf_iteration = iscf_iteration + 1
               else
@@ -418,7 +411,7 @@
 !                               F O R C E S
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
-            call cpu_time(timei)
+            call cpu_time (time_forces_begin)
             call initialize_forces (s)
             call densityPP_matrix (s)
             call cape_matrix (s)
@@ -448,12 +441,15 @@
             write (s%logfile,*) ' Three-center non-charge dependent assemblers.'
             call Dassemble_vnl_3c (s)
 
+            call cpu_time (time_initial)
             write (s%logfile,*) ' Three-center charge dependent Dassemblers.'
             call Dassemble_vna_3c (s)
 
             write (s%logfile, *)
             write (s%logfile, *) ' Exchange-correlation Dassemblers. '
             call Dassemble_vxc (s)
+            call cpu_time (time_final)
+            write (s%logfile, *) ' vxc, vna_3c forces time: ', time_final - time_initial
 
 ! short-range interactions (double-counting interactions)
             call Dassemble_uee (s)
@@ -468,10 +464,10 @@
               write (s%logfile, 512)  iatom, s%forces(iatom)%ftot
             end do
             call md (s, itime_step)
-            call cpu_time(timef)
+            call cpu_time (time_forces_end)
 
             write (s%logfile, *)
-            write (s%logfile, *) ' FORCES time: ', timef - timei
+            write (s%logfile, *) ' FORCES time: ', time_forces_end - time_forces_begin
 
             write (s%logfile, *)
             write (s%logfile, '(A)') ' Grand Total Energy '
@@ -490,12 +486,15 @@
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
             call destroy_denmat (s)
+            call destroy_denmat_PP (s)
             call destroy_Dassemble_2c (s)
             call destroy_assemble_2c (s)
+            call destroy_assemble_vna (s)
             call destroy_Dassemble_vxc (s)
             call destroy_assemble_vxc (s)
-            call destroy_Dassemble_vnl (s)
+            call destroy_Dassemble_PP_2c (s)
             call destroy_assemble_PP_2c (s)
+            call destroy_assemble_ewald (s)
             call destroy_Dassemble_ewald (s)
             call destroy_forces (s)
             call destroy_neighbors (s)
