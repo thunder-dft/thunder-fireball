@@ -58,6 +58,7 @@
         use M_neighbors
         use M_neighbors_PP
         use M_atom_functions
+        use M_vdW
 
 ! /FDATA
         use M_Fdata_1c
@@ -104,12 +105,16 @@
 ! Variable Declaration and Description
 ! ===========================================================================
         integer iatom                     !< counter over atoms and neighbors
+        integer in1
 
         integer iscf_iteration
         integer istructure, iseparate
         integer itime_step
+
         real sigma
+
         character (len = 25) :: slogfile
+        character (len = 25) :: sjsonfile
 
 ! --------------------------------------------------------------------------
 ! Timer (Intel Fortran)
@@ -123,6 +128,7 @@
         real ebs                                 ! band-structure energy
         real uii_uee, uxcdcc                     ! short-range energies
         real etot                                ! total energy
+        real vdW                                 ! van der Waal's energy
 
         real getot                               ! grand total energy
         real getot_initial                       ! initial grand total
@@ -243,6 +249,7 @@
         write (ilogfile,*)
         write (ilogfile,'(A)') 'Execution '
         write (ilogfile,'(A)') '========= '
+        call initialize_vdW  ! only if structures.vdW exists
         write (ilogfile,*)
 
 ! Loop over all structures
@@ -252,12 +259,17 @@
           s => structures(istructure)
           read (1, *) s%basisfile
           if (iseparate .eq. 1) then
-            s%logfile = istructure + 1000
-            s%inpfile = istructure + 2000
+            s%inpfile = istructure + 1000
+            s%logfile = istructure + 2000
+            s%jsonfile = istructure + 3000
             slogfile = s%basisfile(:len(trim(s%basisfile)) - 4)
+            sjsonfile = trim(slogfile)//'.json'
             slogfile = trim(slogfile)//'.log'
             open (unit = s%logfile, file = slogfile, status = 'replace')
+            open (unit = s%jsonfile, file = sjsonfile, status = 'replace')
           end if
+          write (s%jsonfile,'(A)') '{"fireball":['
+          write (s%jsonfile,'(A)') '{'
           write (ilogfile, 100) s%basisfile
 
           write (s%logfile,'(A)') 'Structure'
@@ -273,12 +285,51 @@
           ! Set the charges for istructure
           call read_charges (s)
           call set_constraints (s)
+          call read_vdW_parameters (s)
 
 ! Molecular-dynamics loop
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
           call set_gear ()
           do itime_step = nstepi, nstepf
+
+            ! write out stuff to json file
+            write (s%jsonfile,'(A, I5, A)') '      "nstep":', itime_step, ','
+            write (s%jsonfile,'(A)') '      "Lattice Vectors":['
+            write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
+     &        '      [', s%lattice(1)%a(1), ',', s%lattice(1)%a(2), ',',      &
+     &                   s%lattice(1)%a(3),'],'
+            write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
+     &        '      [', s%lattice(2)%a(1), ',', s%lattice(2)%a(2), ',',      &
+     &                   s%lattice(2)%a(3),'],'
+            write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
+     &        '      [', s%lattice(3)%a(1), ',', s%lattice(3)%a(2), ',',      &
+     &                   s%lattice(3)%a(3),']],'
+
+            write (s%jsonfile,'(A)') '      "Atomic Numbers":['
+            do iatom = 1, s%natoms - 1
+              in1 = s%atom(iatom)%imass
+              write (s%jsonfile,'(A, i3, A)') '            ', species(in1)%nZ, ','
+            end do
+            write (s%jsonfile,'(A, i3, A)') '            ', species(in1)%nZ, '],'
+
+            write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
+     &        '      [', s%atom(iatom)%ratom(1), ',',                         &
+     &                   s%atom(iatom)%ratom(2), ',',                         &
+     &                   s%atom(iatom)%ratom(3),']],'
+
+            write (s%jsonfile,'(A)') '      "Coordinates":['
+            do iatom = 1, s%natoms - 1
+              write (s%jsonfile,'(A, 3(F15.6, A), A)')                        &
+     &          '      [', s%atom(iatom)%ratom(1), ',',                       &
+     &                     s%atom(iatom)%ratom(2), ',',                       &
+     &                     s%atom(iatom)%ratom(3),'],'
+            end do
+            write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
+     &        '      [', s%atom(iatom)%ratom(1), ',',                         &
+     &                   s%atom(iatom)%ratom(2), ',',                         &
+     &                   s%atom(iatom)%ratom(3),']],'
+
             write (s%logfile, *)
             write (s%logfile, '(A, I5, A1, I5, A1)') 'Molecular-Dynamics Loop  Step: (', itime_step, '/', nstepf, ')'
             write (s%logfile, '(A)') '==============================================='
@@ -291,6 +342,7 @@
 ! ===========================================================================
             call driver_neighbors (s)
             call driver_neighbors_PP (s)
+            call driver_neighbors_vdW (s)
 
 ! ===========================================================================
 ! ---------------------------------------------------------------------------
@@ -391,7 +443,6 @@
               write (s%logfile, *)
               write (s%logfile, *) ' SCF ENERGY time: ', time_scf_end - time_scf_begin
 
-! End scf loop
 ! After building the density matrix, then we can free up ewald and denmat arrays
 ! - we reallocate these during the next SCF cycle anyways.
 ! We also free up the vna and vxc arrays if this is not converged.
@@ -402,9 +453,10 @@
               end if
               if (ifix_CHARGES .eq. 1) exit
             end do
-
             call writeout_energies (s, ebs, uii_uee, uxcdcc)
-            if (iwriteout_xyz .eq. 1) call writeout_xyz (s, ebs, uii_uee, uxcdcc)
+
+            ! json output for energy
+            write (s%jsonfile,'(A, F15.6, A)') '      "Total Energy":', etot, ','
 
 ! ===========================================================================
 ! ---------------------------------------------------------------------------
@@ -456,14 +508,33 @@
             call Dassemble_uxc (s)
 
             call build_forces (s)
-            if (iwriteout_forces .eq. 1) call writeout_forces (s)
 
+! Add in the van der Waals energy and forces if there is an input file
+            call calculate_vdW (s, vdW)
+
+            if (iwriteout_forces .eq. 1) call writeout_forces (s)
             write (s%logfile,*)
-            write (s%logfile,*) ' Total Forces: '
-            do iatom = 1, s%natoms
+            write (s%logfile,*) ' Total Forces:'
+            do iatom = 1, s%natoms - 1
               write (s%logfile, 512)  iatom, s%forces(iatom)%ftot
             end do
+
+            ! json output for forces
+            write (s%jsonfile,'(A)') '      "Forces":['
+            do iatom = 1, s%natoms - 1
+              write (s%jsonfile,'(A, 3(F15.6, A), A)')                        &
+     &          '      [', s%forces(iatom)%ftot(1), ',',                      &
+     &                     s%forces(iatom)%ftot(2), ',',                      &
+     &                     s%forces(iatom)%ftot(3),'],'
+            end do
+            write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
+     &        '      [', s%forces(iatom)%ftot(1), ',',                        &
+     &                   s%forces(iatom)%ftot(2), ',',                        &
+     &                   s%forces(iatom)%ftot(3),']],'
+
             call md (s, itime_step)
+
+            call writeout_xyz (s, ebs, uii_uee, uxcdcc)
             call cpu_time (time_forces_end)
 
             write (s%logfile, *)
@@ -473,12 +544,13 @@
             write (s%logfile, '(A)') ' Grand Total Energy '
             write (s%logfile, '(A)') ' ------------------ '
             write (s%logfile,601) tkinetic
-            getot = etot + tkinetic
-            write (s%logfile,602) getot
-            write (s%logfile,603) getot/s%natoms
+            write (s%logfile,602) vdW
+            getot = etot + tkinetic + vdW
+            write (s%logfile,603) getot
+            write (s%logfile,604) getot/s%natoms
             if (itime_step .eq. nstepi) getot_initial = getot/s%natoms
 ! Check energy conservation
-            write (s%logfile,604) 1000.d0*(getot/s%natoms - getot_initial)
+            write (s%logfile,605) 1000.d0*(getot/s%natoms - getot_initial)
 
 ! ===========================================================================
 ! ---------------------------------------------------------------------------
@@ -499,6 +571,10 @@
             call destroy_forces (s)
             call destroy_neighbors (s)
             call destroy_neighbors_PP (s)
+            call destroy_neighbors_vdW (s)
+
+            write (s%jsonfile,'(A)') '},'
+            write (s%jsonfile,'(A)') '{'
           end do ! end molecular dynamics loop
 
 ! ===========================================================================
@@ -522,6 +598,8 @@
           write (s%logfile,'(A)') 'FIREBALL EXECUTION COMPLETE'
           if (iseparate .eq. 1) close (s%logfile)
 
+          write (s%jsonfile,'(A)') ']}'
+          write (s%jsonfile,'(A)') '}'
         end do ! end loop over all structures
         close (1)
         write (ilogfile,*)
@@ -560,9 +638,10 @@
 512     format (2x, 'f_total =',i6 ,3(2x,f15.6))
 
 601     format (2x, '                           Nuclear Kinetic Energy = ', f18.8)
-602     format (2x, ' Grand Total Energy (Nuclear Kinetic + Potential) = ', f18.8)
-603     format (2x, '                      Grand Total Energy per Atom = ', f18.8)
-604     format (2x, '                               deltaE/atom  (meV) = ', f18.8)
+602     format (2x, '                            van der Waal''s Energy = ', f18.8)
+603     format (2x, ' Grand Total Energy (Nuclear Kinetic + Potential) = ', f18.8)
+604     format (2x, '                      Grand Total Energy per Atom = ', f18.8)
+605     format (2x, '                               deltaE/atom  (meV) = ', f18.8)
 
 ! End Program
 ! ===========================================================================
