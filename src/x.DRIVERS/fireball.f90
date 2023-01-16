@@ -126,6 +126,7 @@
 
 ! Energies
         real ebs                                 ! band-structure energy
+        real efermi                              ! Fermi energy
         real uii_uee, uxcdcc                     ! short-range energies
         real etot                                ! total energy
         real vdW                                 ! van der Waal's energy
@@ -296,31 +297,32 @@
             ! write out stuff to json file
             write (s%jsonfile,'(A, I5, A)') '      "nstep":', itime_step, ','
             write (s%jsonfile,'(A)') '      "cell":['
-            write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
+            write (s%jsonfile,'(A, 2x, 3(F15.6, A), A)')                      &
      &        '      [', s%lattice(1)%a(1), ',', s%lattice(1)%a(2), ',',      &
      &                   s%lattice(1)%a(3),'],'
-            write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
+            write (s%jsonfile,'(A, 2x, 3(F15.6, A), A)')                      &
      &        '      [', s%lattice(2)%a(1), ',', s%lattice(2)%a(2), ',',      &
      &                   s%lattice(2)%a(3),'],'
-            write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
+            write (s%jsonfile,'(A, 2x, 3(F15.6, A), A)')                      &
      &        '      [', s%lattice(3)%a(1), ',', s%lattice(3)%a(2), ',',      &
      &                   s%lattice(3)%a(3),']],'
 
             write (s%jsonfile,'(A)') '      "numbers":['
             do iatom = 1, s%natoms - 1
               in1 = s%atom(iatom)%imass
-              write (s%jsonfile,'(A, i3, A)') '            ', species(in1)%nZ, ','
+              write (s%jsonfile,'(16x, i3, A)') species(in1)%nZ, ','
             end do
-            write (s%jsonfile,'(A, i3, A)') '            ', species(in1)%nZ, '],'
+            in1 = s%atom(s%natoms)%imass
+            write (s%jsonfile,'(16x, i3, A)') species(in1)%nZ, '],'
 
             write (s%jsonfile,'(A)') '      "positions":['
             do iatom = 1, s%natoms - 1
-              write (s%jsonfile,'(A, 3(F15.6, A), A)')                        &
+              write (s%jsonfile,'(A, 6x, 3(F15.6, A), A)')                    &
      &          '      [', s%atom(iatom)%ratom(1), ',',                       &
      &                     s%atom(iatom)%ratom(2), ',',                       &
      &                     s%atom(iatom)%ratom(3),'],'
             end do
-            write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
+            write (s%jsonfile,'(A, 6x, 3(F15.6, A), A)')                      &
      &        '      [', s%atom(iatom)%ratom(1), ',',                         &
      &                   s%atom(iatom)%ratom(2), ',',                         &
      &                   s%atom(iatom)%ratom(3),']],'
@@ -401,7 +403,7 @@
               write (s%logfile, *) ' Kspace '
               call cpu_time (time_initial)
               call driver_kspace (s, iscf_iteration)
-              call density_matrix (s)
+              call density_matrix (s, efermi)
               if (iwriteout_density .eq. 1) call writeout_density (s)
               call cpu_time (time_final)
               write (s%logfile, *) ' kspace time: ', time_final - time_initial
@@ -449,6 +451,9 @@
               if (ifix_CHARGES .eq. 1) exit
             end do
             call writeout_energies (s, ebs, uii_uee, uxcdcc)
+
+            ! json output for Fermi energy
+            write (s%jsonfile,'(A, F15.6, A)') '      "fermi":', efermi, ','
 
             ! json output for energy
             write (s%jsonfile,'(A, F15.6, A)') '      "energy":', etot, ','
@@ -517,12 +522,12 @@
             ! json output for forces
             write (s%jsonfile,'(A)') '      "forces":['
             do iatom = 1, s%natoms - 1
-              write (s%jsonfile,'(A, 3(F15.6, A), A)')                        &
+              write (s%jsonfile,'(A, 3x, 3(F15.6, A), A)')                    &
      &          '      [', s%forces(iatom)%ftot(1), ',',                      &
      &                     s%forces(iatom)%ftot(2), ',',                      &
      &                     s%forces(iatom)%ftot(3),'],'
             end do
-            write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
+            write (s%jsonfile,'(A, 3x, 3(F15.6, A), A)')                      &
      &        '      [', s%forces(iatom)%ftot(1), ',',                        &
      &                   s%forces(iatom)%ftot(2), ',',                        &
      &                   s%forces(iatom)%ftot(3),']],'
