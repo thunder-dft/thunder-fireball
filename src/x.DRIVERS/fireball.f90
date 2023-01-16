@@ -313,11 +313,6 @@
             end do
             write (s%jsonfile,'(A, i3, A)') '            ', species(in1)%nZ, '],'
 
-            write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
-     &        '      [', s%atom(iatom)%ratom(1), ',',                         &
-     &                   s%atom(iatom)%ratom(2), ',',                         &
-     &                   s%atom(iatom)%ratom(3),']],'
-
             write (s%jsonfile,'(A)') '      "Coordinates":['
             do iatom = 1, s%natoms - 1
               write (s%jsonfile,'(A, 3(F15.6, A), A)')                        &
