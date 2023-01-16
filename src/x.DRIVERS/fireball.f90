@@ -295,7 +295,7 @@
 
             ! write out stuff to json file
             write (s%jsonfile,'(A, I5, A)') '      "nstep":', itime_step, ','
-            write (s%jsonfile,'(A)') '      "Lattice Vectors":['
+            write (s%jsonfile,'(A)') '      "cell":['
             write (s%jsonfile,'(A, 3(F15.6, A), A)')                          &
      &        '      [', s%lattice(1)%a(1), ',', s%lattice(1)%a(2), ',',      &
      &                   s%lattice(1)%a(3),'],'
@@ -306,14 +306,14 @@
      &        '      [', s%lattice(3)%a(1), ',', s%lattice(3)%a(2), ',',      &
      &                   s%lattice(3)%a(3),']],'
 
-            write (s%jsonfile,'(A)') '      "Atomic Numbers":['
+            write (s%jsonfile,'(A)') '      "numbers":['
             do iatom = 1, s%natoms - 1
               in1 = s%atom(iatom)%imass
               write (s%jsonfile,'(A, i3, A)') '            ', species(in1)%nZ, ','
             end do
             write (s%jsonfile,'(A, i3, A)') '            ', species(in1)%nZ, '],'
 
-            write (s%jsonfile,'(A)') '      "Coordinates":['
+            write (s%jsonfile,'(A)') '      "positions":['
             do iatom = 1, s%natoms - 1
               write (s%jsonfile,'(A, 3(F15.6, A), A)')                        &
      &          '      [', s%atom(iatom)%ratom(1), ',',                       &
@@ -451,7 +451,7 @@
             call writeout_energies (s, ebs, uii_uee, uxcdcc)
 
             ! json output for energy
-            write (s%jsonfile,'(A, F15.6, A)') '      "Total Energy":', etot, ','
+            write (s%jsonfile,'(A, F15.6, A)') '      "energy":', etot, ','
 
 ! ===========================================================================
 ! ---------------------------------------------------------------------------
@@ -515,7 +515,7 @@
             end do
 
             ! json output for forces
-            write (s%jsonfile,'(A)') '      "Forces":['
+            write (s%jsonfile,'(A)') '      "forces":['
             do iatom = 1, s%natoms - 1
               write (s%jsonfile,'(A, 3(F15.6, A), A)')                        &
      &          '      [', s%forces(iatom)%ftot(1), ',',                      &
