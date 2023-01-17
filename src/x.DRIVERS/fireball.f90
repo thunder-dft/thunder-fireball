@@ -270,7 +270,6 @@
             open (unit = s%jsonfile, file = sjsonfile, status = 'replace')
           end if
           write (s%jsonfile,'(A)') '{"fireball":['
-          write (s%jsonfile,'(A)') '{'
           write (ilogfile, 100) s%basisfile
 
           write (s%logfile,'(A)') 'Structure'
@@ -295,6 +294,7 @@
           do itime_step = nstepi, nstepf
 
             ! write out stuff to json file
+            write (s%jsonfile,'(A)') '{'
             write (s%jsonfile,'(A, I5, A)') '      "nstep":', itime_step, ','
             write (s%jsonfile,'(A)') '      "cell":['
             write (s%jsonfile,'(A, 2x, 3(F15.6, A), A)')                      &
@@ -531,6 +531,11 @@
      &        '      [', s%forces(iatom)%ftot(1), ',',                        &
      &                   s%forces(iatom)%ftot(2), ',',                        &
      &                   s%forces(iatom)%ftot(3),']],'
+            if (itime_step .ne. nstepf) then
+              write (s%jsonfile,'(A)') '},'
+            else
+              write (s%jsonfile,'(A)') '}'
+            end if
 
             call md (s, itime_step)
 
@@ -572,9 +577,6 @@
             call destroy_neighbors (s)
             call destroy_neighbors_PP (s)
             call destroy_neighbors_vdW (s)
-
-            write (s%jsonfile,'(A)') '},'
-            write (s%jsonfile,'(A)') '{'
           end do ! end molecular dynamics loop
 
 ! ===========================================================================
@@ -597,9 +599,6 @@
           write (s%logfile,*)
           write (s%logfile,'(A)') 'FIREBALL EXECUTION COMPLETE'
           if (iseparate .eq. 1) close (s%logfile)
-
-          write (s%jsonfile,'(A)') ']}'
-          write (s%jsonfile,'(A)') '}'
         end do ! end loop over all structures
         close (1)
         write (ilogfile,*)
