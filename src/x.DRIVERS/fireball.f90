@@ -578,7 +578,7 @@
             call destroy_neighbors_PP (s)
             call destroy_neighbors_vdW (s)
           end do ! end molecular dynamics loop
-
+          write (s%jsonfile,'(A)') ']}'
 ! ===========================================================================
 ! ---------------------------------------------------------------------------
 !    P O S T   O P T I M I Z A T I O N   C H A R A C T E R I Z A T I O N
