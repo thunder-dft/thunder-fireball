@@ -515,7 +515,7 @@
             if (iwriteout_forces .eq. 1) call writeout_forces (s)
             write (s%logfile,*)
             write (s%logfile,*) ' Total Forces:'
-            do iatom = 1, s%natoms - 1
+            do iatom = 1, s%natoms
               write (s%logfile, 512)  iatom, s%forces(iatom)%ftot
             end do
 
@@ -530,7 +530,7 @@
             write (s%jsonfile,'(A, 3x, 3(F15.6, A), A)')                      &
      &        '      [', s%forces(iatom)%ftot(1), ',',                        &
      &                   s%forces(iatom)%ftot(2), ',',                        &
-     &                   s%forces(iatom)%ftot(3),']],'
+     &                   s%forces(iatom)%ftot(3),']]'
             if (itime_step .ne. nstepf) then
               write (s%jsonfile,'(A)') '},'
             else
