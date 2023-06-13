@@ -418,22 +418,6 @@
               end if
               if (iwriteout_charges .eq. 1) call writeout_charges (s)
 
-! Write out the charges to .json file
-              write (s%jsonfile,'(A)') '      "charges":['
-              do iatom = 1, s%natoms - 1
-                in1 = s%atom(iatom)%imass
-                nssh = species(in1)%nssh
-                write (s%jsonfile,'(A, 6x, 9(F15.6, A), A)')                  &
-     &            '      [', (s%atom(iatom)%shell(issh)%Qin, issh = 1, nssh - 1), ',', &
-     &                        s%atom(iatom)%shell(nssh)%Qin,'],'
-              end do
-              in1 = s%atom(s%natoms)%imass
-              nssh = species(in1)%nssh
-              write (s%jsonfile,'(A, 6x, 9(F15.6, A), A)')                    &
-     &            '      [', (s%atom(iatom)%shell(issh)%Qin, issh = 1, nssh - 1), ',', &
-     &                        s%atom(iatom)%shell(nssh)%Qin,']],'
-
-
 ! ===========================================================================
 ! ---------------------------------------------------------------------------
 !                       T O T A L   E N E R G I E S
@@ -470,6 +454,27 @@
               end if
               if (ifix_CHARGES .eq. 1) exit
             end do
+
+! Write out the charges to .json file
+            write (s%jsonfile,'(A)') '      "charges":['
+            do iatom = 1, s%natoms - 1
+              in1 = s%atom(iatom)%imass
+              nssh = species(in1)%nssh
+              if (nssh .eq. 1) then
+                write (s%jsonfile,'(A, 6x, (F15.6, A), A)')                   &
+     &            '      [', s%atom(iatom)%shell(nssh)%Qin,'],'
+              else
+                write (s%jsonfile,'(A, 6x, 9(F15.6, A), A)')                  &
+     &            '      [', (s%atom(iatom)%shell(issh)%Qin, issh = 1, nssh - 1), ',', &
+     &                        s%atom(iatom)%shell(nssh)%Qin,'],'
+              end if
+            end do
+            in1 = s%atom(s%natoms)%imass
+            nssh = species(in1)%nssh
+            write (s%jsonfile,'(A, 6x, 9(F15.6, A), A)')                      &
+     &          '      [', (s%atom(iatom)%shell(issh)%Qin, issh = 1, nssh - 1), ',', &
+     &                      s%atom(iatom)%shell(nssh)%Qin,']],'
+
             call writeout_energies (s, ebs, uii_uee, uxcdcc)
 
             ! json output for Fermi energy
@@ -551,7 +556,7 @@
      &        '      [', s%forces(iatom)%ftot(1), ',',                        &
      &                   s%forces(iatom)%ftot(2), ',',                        &
      &                   s%forces(iatom)%ftot(3),']],'
-            write (s%jsonfile,'(A, F15.6, A)') '      "RMS Force":', rms
+            write (s%jsonfile,'(A, F15.6, A)') '      "RMS":', rms
             if (itime_step .ne. nstepf) then
               write (s%jsonfile,'(A)') '},'
             else
