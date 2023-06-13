@@ -471,9 +471,14 @@
             end do
             in1 = s%atom(s%natoms)%imass
             nssh = species(in1)%nssh
-            write (s%jsonfile,'(A, 6x, 9(F15.6, A), A)')                      &
+            if (nssh .eq. 1) then
+              write (s%jsonfile,'(A, 6x, (F15.6, A), A)')                     &
+     &          '      [', s%atom(iatom)%shell(nssh)%Qin,']],'
+            else
+              write (s%jsonfile,'(A, 6x, 9(F15.6, A), A)')                    &
      &          '      [', (s%atom(iatom)%shell(issh)%Qin, issh = 1, nssh - 1), ',', &
-     &                      s%atom(iatom)%shell(nssh)%Qin,']],'
+     &                        s%atom(iatom)%shell(nssh)%Qin,']],'
+            end if
 
             call writeout_energies (s, ebs, uii_uee, uxcdcc)
 
