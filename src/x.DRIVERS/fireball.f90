@@ -111,7 +111,6 @@
         integer istructure, iseparate
         integer itime_step
 
-        integer issh                        !< counter over shells
         integer nssh                        !< number of shells
 
         real sigma                          !< difference for SCF
@@ -462,24 +461,59 @@
               nssh = species(in1)%nssh
               if (nssh .eq. 1) then
                 write (s%jsonfile,'(A, 6x, (F15.6, A), A)')                   &
-     &            '      [', s%atom(iatom)%shell(nssh)%Qin,'],'
-              else
-                write (s%jsonfile,'(A, 6x, 9(F15.6, A), A)')                  &
-     &            '      [', (s%atom(iatom)%shell(issh)%Qin, issh = 1, nssh - 1), ',', &
-     &                        s%atom(iatom)%shell(nssh)%Qin,'],'
+      &            '      [', s%atom(iatom)%shell(1)%Qin,'],'
+              else if (nssh .eq. 2) then
+                write (s%jsonfile,'(A, 6x, 2(F15.6, A), A)')                  &
+      &            '      [', s%atom(iatom)%shell(1)%Qin, ',',                &
+      &                       s%atom(iatom)%shell(2)%Qin,'],'
+              else if (nssh .eq. 3) then
+                write (s%jsonfile,'(A, 6x, 3(F15.6, A), A)')                  &
+      &            '      [', s%atom(iatom)%shell(1)%Qin, ',',                &
+      &                       s%atom(iatom)%shell(2)%Qin, ',',                &
+      &                       s%atom(iatom)%shell(3)%Qin,'],'
+              else if (nssh .eq. 4) then
+                write (s%jsonfile,'(A, 6x, 4(F15.6, A), A)')                  &
+      &            '      [', s%atom(iatom)%shell(1)%Qin, ',',                &
+      &                       s%atom(iatom)%shell(2)%Qin, ',',                &
+      &                       s%atom(iatom)%shell(3)%Qin, ',',                &
+      &                       s%atom(iatom)%shell(4)%Qin,'],'
+              else if (nssh .eq. 5) then
+                write (s%jsonfile,'(A, 6x, 5(F15.6, A), A)')                  &
+      &            '      [', s%atom(iatom)%shell(1)%Qin, ',',                &
+      &                       s%atom(iatom)%shell(2)%Qin, ',',                &
+      &                       s%atom(iatom)%shell(3)%Qin, ',',                &
+      &                       s%atom(iatom)%shell(4)%Qin, ',',                &
+      &                       s%atom(iatom)%shell(5)%Qin,'],'
               end if
             end do
             in1 = s%atom(s%natoms)%imass
             nssh = species(in1)%nssh
             if (nssh .eq. 1) then
               write (s%jsonfile,'(A, 6x, (F15.6, A), A)')                     &
-     &          '      [', s%atom(iatom)%shell(nssh)%Qin,']],'
-            else
-              write (s%jsonfile,'(A, 6x, 9(F15.6, A), A)')                    &
-     &          '      [', (s%atom(iatom)%shell(issh)%Qin, issh = 1, nssh - 1), ',', &
-     &                        s%atom(iatom)%shell(nssh)%Qin,']],'
+      &          '      [', s%atom(s%natoms)%shell(1)%Qin,']],'
+            else if (nssh .eq. 2) then
+              write (s%jsonfile,'(A, 6x, 2(F15.6, A), A)')                    &
+      &          '      [', s%atom(s%natoms)%shell(1)%Qin, ',',               &
+      &                     s%atom(s%natoms)%shell(2)%Qin,']],'
+            else if (nssh .eq. 3) then
+              write (s%jsonfile,'(A, 6x, 3(F15.6, A), A)')                    &
+      &          '      [', s%atom(s%natoms)%shell(1)%Qin, ',',               &
+      &                     s%atom(s%natoms)%shell(2)%Qin, ',',               &
+      &                     s%atom(s%natoms)%shell(3)%Qin,']],'
+            else if (nssh .eq. 4) then
+              write (s%jsonfile,'(A, 6x, 4(F15.6, A), A)')                    &
+      &          '      [', s%atom(s%natoms)%shell(1)%Qin, ',',               &
+      &                     s%atom(s%natoms)%shell(2)%Qin, ',',               &
+      &                     s%atom(s%natoms)%shell(3)%Qin, ',',               &
+      &                     s%atom(s%natoms)%shell(4)%Qin,']],'
+            else if (nssh .eq. 5) then
+              write (s%jsonfile,'(A, 6x, 5(F15.6, A), A)')                    &
+      &          '      [', s%atom(s%natoms)%shell(1)%Qin, ',',               &
+      &                     s%atom(s%natoms)%shell(2)%Qin, ',',               &
+      &                     s%atom(s%natoms)%shell(3)%Qin, ',',               &
+      &                     s%atom(s%natoms)%shell(4)%Qin, ',',               &
+      &                     s%atom(s%natoms)%shell(5)%Qin,']],'
             end if
-
             call writeout_energies (s, ebs, uii_uee, uxcdcc)
 
             ! json output for Fermi energy
