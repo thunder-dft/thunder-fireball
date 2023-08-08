@@ -92,6 +92,12 @@
 ! /SCF
         use M_charges
 
+! /MPI
+        use M_mpi
+
+! /SOCKETS
+        use M_sockets
+
         implicit none
 
 ! Argument Declaration and Description
@@ -118,6 +124,15 @@
 
         character (len = 25) :: slogfile
         character (len = 25) :: sjsonfile
+
+! --------------------------------------------------------------------------
+! Socket communication
+! --------------------------------------------------------------------------
+        ! length of the headers of the driver/wrapper communication protocol
+        integer, parameter :: msglen = 12
+        integer socket, inet, port        ! socket ID & address of the server
+        character (len = 12) :: header
+        character (len = 1024) :: host
 
 ! --------------------------------------------------------------------------
 ! Timer (Intel Fortran)
@@ -198,6 +213,13 @@
 
 ! ===========================================================================
 ! ---------------------------------------------------------------------------
+!                            M P I   B E G I N
+! ---------------------------------------------------------------------------
+! ===========================================================================
+        call initialize_mpi
+
+! ===========================================================================
+! ---------------------------------------------------------------------------
 !                             W E L C O M E !
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
@@ -205,6 +227,22 @@
         iseparate = 1
         open (unit = ilogfile, file = 'output.log', status = 'replace')
         call welcome_fireball
+
+! ===========================================================================
+! ---------------------------------------------------------------------------
+!                          S O C K E T   B E G I N
+! ---------------------------------------------------------------------------
+! ===========================================================================
+! Open socket communiction for interactive dynamics using ipi
+! Calls the interface to the POSIX sockets library to open a communication
+! channel.
+        if (ipi .eq. 1) then
+          inet = 1
+          host = "localhost"//achar(0)
+          port = 31415
+          write (ilogfile, '(A)') 'Open socket for i-pi with ASE communcation'
+          call open_socket (socket, inet, port, host)
+        end if
 
 ! ===========================================================================
 ! ---------------------------------------------------------------------------
@@ -296,6 +334,11 @@
           call set_gear ()
           do itime_step = nstepi, nstepf
 
+            ! read from socket one message header
+            if (ipi .eq. 1) then
+              call readbuffer(socket, header, msglen)
+              write (slogfile, *) ' Message from server: ', trim(header)
+            end if
             ! write out stuff to json file
             write (s%jsonfile,'(A)') '{'
             write (s%jsonfile,'(A, I5, A)') '      "nstep":', itime_step, ','
@@ -690,6 +733,13 @@
      &    time_end-time_begin, ' [sec]  '
         write (ilogfile,'(A)') 'FIREBALL EXECUTION COMPLETE'
         close (ilogfile)
+
+! ===========================================================================
+! ---------------------------------------------------------------------------
+!                             M P I   E N D
+! ---------------------------------------------------------------------------
+! ===========================================================================
+        call finalize_mpi
 
 ! Deallocate Arrays
 ! ===========================================================================
