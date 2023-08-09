@@ -130,9 +130,8 @@
 ! --------------------------------------------------------------------------
         ! length of the headers of the driver/wrapper communication protocol
         integer, parameter :: msglen = 12
-        integer socket, inet, port        ! socket ID & address of the server
+        integer socket                   ! socket ID & address of the server
         character (len = 12) :: header
-        character (len = 1024) :: host
 
 ! --------------------------------------------------------------------------
 ! Timer (Intel Fortran)
@@ -237,10 +236,8 @@
 ! Calls the interface to the POSIX sockets library to open a communication
 ! channel.
         if (ipi .eq. 1) then
-          inet = 1
-          host = unixsocket//achar(0)
           write (ilogfile, '(A)') 'Open socket for i-pi with ASE communcation'
-          call open_socket (socket, inet, iport, host)
+          call open_socket (socket, inet, port, host)
         end if
 
 ! ===========================================================================
