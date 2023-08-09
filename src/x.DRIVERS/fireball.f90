@@ -238,10 +238,9 @@
 ! channel.
         if (ipi .eq. 1) then
           inet = 1
-          host = "localhost"//achar(0)
-          port = 31415
+          host = unixsocket//achar(0)
           write (ilogfile, '(A)') 'Open socket for i-pi with ASE communcation'
-          call open_socket (socket, inet, port, host)
+          call open_socket (socket, inet, iport, host)
         end if
 
 ! ===========================================================================
