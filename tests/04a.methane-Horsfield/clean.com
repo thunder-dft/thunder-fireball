@@ -8,5 +8,4 @@ rm *.eigen
 rm 001.inp
 rm 001.xyz
 rm *.json
-rm *.traj
 rm WARNINGS
