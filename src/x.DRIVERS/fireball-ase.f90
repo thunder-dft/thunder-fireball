@@ -374,6 +374,14 @@
           do itime_step = nstepi, nstepf
 
             ! write out stuff to json file
+
+            ! we write out another step so rewind two lines of the json file and put '},'
+            if (itime_step .ne. nstepi) then
+              backspace (s%jsonfile)
+              backspace (s%jsonfile)
+              write (s%jsonfile,'(A)') '},'
+            end if
+
             write (s%jsonfile,'(A)') '{'
             write (s%jsonfile,'(A, I5, A)') '      "nstep":', itime_step, ','
             write (s%jsonfile,'(A)') '      "cell":['
@@ -673,11 +681,8 @@
      &                   s%forces(s%natoms)%ftot(2), ',',                     &
      &                   s%forces(s%natoms)%ftot(3),']],'
             write (s%jsonfile,'(A, F15.6, A)') '      "RMS":', rms
-            if (itime_step .ne. nstepf) then
-              write (s%jsonfile,'(A)') '},'
-            else
-              write (s%jsonfile,'(A)') '}'
-            end if
+            write (s%jsonfile,'(A)') '}'
+            write (s%jsonfile,'(A)') ']}'
 
             call cpu_time (time_forces_end)
             write (s%logfile, *)
