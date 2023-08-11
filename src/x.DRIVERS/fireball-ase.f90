@@ -106,7 +106,7 @@
 
 ! Parameters and Data Declaration
 ! ===========================================================================
-! None
+        include '../include/constants.h'
 
 ! Variable Declaration and Description
 ! ===========================================================================
@@ -131,7 +131,22 @@
         ! length of the headers of the driver/wrapper communication protocol
         integer, parameter :: msglen = 12
         integer socket                   ! socket ID & address of the server
+
+        ! degrees of freedom - should be 3*natoms
+        ! this is for sanity checking the communications
+        integer idof
+
+        ! need to pass double precision energy and forces
+        double precision energy
+
+        ! cell information received - currently not used
+        double precision, dimension (9) :: xcell
+        double precision, dimension (9) :: xcell_inverse
+
         character (len = 12) :: header
+
+        ! message buffer for sending forces and other information
+        double precision, allocatable :: msgbuffer (:)
 
 ! --------------------------------------------------------------------------
 ! Timer (Intel Fortran)
@@ -229,19 +244,6 @@
 
 ! ===========================================================================
 ! ---------------------------------------------------------------------------
-!                          S O C K E T   B E G I N
-! ---------------------------------------------------------------------------
-! ===========================================================================
-! Open socket communiction for interactive dynamics using ipi
-! Calls the interface to the POSIX sockets library to open a communication
-! channel.
-        if (ipi .eq. 1) then
-          write (ilogfile, '(A)') 'Open socket for i-pi with ASE communcation'
-          call open_socket (socket, inet, port, host)
-        end if
-
-! ===========================================================================
-! ---------------------------------------------------------------------------
 !             R E A D   I N   S Y S T E M   I N F O R M A T I O N
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
@@ -290,6 +292,19 @@
         call initialize_vdW  ! only if structures.vdW exists
         write (ilogfile,*)
 
+! ===========================================================================
+! ---------------------------------------------------------------------------
+!                          S O C K E T   B E G I N
+! ---------------------------------------------------------------------------
+! ===========================================================================
+! Open socket communiction for interactive dynamics using ipi
+! Calls the interface to the POSIX sockets library to open a communication
+! channel.
+        if (ipi .eq. 1) then
+          write (ilogfile, '(A)') 'Open socket for i-pi with ASE communcation'
+          call open_socket (socket, inet, port, host)
+        end if
+
 ! Loop over all structures
 ! This loop can be made parallel if each subroutine in lightning
 ! is modified to take s as a parameter, rather than reference s directly
@@ -324,17 +339,40 @@
           call set_constraints (s)
           call read_vdW_parameters (s)
 
+!         ! SOCKET - GET POSITIONS
+          if (ipi .eq. 1) then
+            do while (.true.)
+              call readbuffer (socket, header, msglen)
+
+              if (trim(header) .eq. "STATUS") then
+                call writebuffer (socket, "READY       ", msglen)
+                call readbuffer (socket, header, msglen)
+                if (trim(header) .eq. "POSDATA") then
+                  ! we will read this cell information; however, FIREBALL will
+                  ! not use them - useful later when we do constant pressure.
+                  call readbuffer (socket, xcell, 9)
+                  call readbuffer (socket, xcell_inverse, 9)
+
+                  ! read the actual positions
+                  call readbuffer (socket, idof)
+                  if (idof .ne. s%natoms) then
+                    stop ' socket is communicating wrong number of atoms! '
+                  end if
+                  allocate (msgbuffer(3*s%natoms))
+                  call readbuffer (socket, msgbuffer, 3*s%natoms)
+                  deallocate (msgbuffer)
+                  exit
+                end if
+              end if
+            end do
+          end if
+
 ! Molecular-dynamics loop
 ! ---------------------------------------------------------------------------
+! All molecular-dynamics is done by ASE.
 ! ===========================================================================
-          call set_gear ()
           do itime_step = nstepi, nstepf
 
-            ! read from socket one message header
-            if (ipi .eq. 1) then
-              call readbuffer(socket, header, msglen)
-              write (slogfile, *) ' Message from server: ', trim(header)
-            end if
             ! write out stuff to json file
             write (s%jsonfile,'(A)') '{'
             write (s%jsonfile,'(A, I5, A)') '      "nstep":', itime_step, ','
@@ -365,9 +403,9 @@
      &                     s%atom(iatom)%ratom(3),'],'
             end do
             write (s%jsonfile,'(A, 6x, 3(F15.6, A), A)')                      &
-     &        '      [', s%atom(iatom)%ratom(1), ',',                         &
-     &                   s%atom(iatom)%ratom(2), ',',                         &
-     &                   s%atom(iatom)%ratom(3),']],'
+     &        '      [', s%atom(s%natoms)%ratom(1), ',',                      &
+     &                   s%atom(s%natoms)%ratom(2), ',',                      &
+     &                   s%atom(s%natoms)%ratom(3),']],'
 
             write (s%logfile, *)
             write (s%logfile, '(A, I5, A1, I5, A1)') 'Molecular-Dynamics Loop  Step: (', itime_step, '/', nstepf, ')'
@@ -631,9 +669,9 @@
      &                     s%forces(iatom)%ftot(3),'],'
             end do
             write (s%jsonfile,'(A, 3x, 3(F15.6, A), A)')                      &
-     &        '      [', s%forces(iatom)%ftot(1), ',',                        &
-     &                   s%forces(iatom)%ftot(2), ',',                        &
-     &                   s%forces(iatom)%ftot(3),']],'
+     &        '      [', s%forces(s%natoms)%ftot(1), ',',                     &
+     &                   s%forces(s%natoms)%ftot(2), ',',                     &
+     &                   s%forces(s%natoms)%ftot(3),']],'
             write (s%jsonfile,'(A, F15.6, A)') '      "RMS":', rms
             if (itime_step .ne. nstepf) then
               write (s%jsonfile,'(A)') '},'
@@ -641,11 +679,7 @@
               write (s%jsonfile,'(A)') '}'
             end if
 
-            call md (s, itime_step)
-
-            call writeout_xyz (s, ebs, uii_uee, uxcdcc)
             call cpu_time (time_forces_end)
-
             write (s%logfile, *)
             write (s%logfile, *) ' FORCES time: ', time_forces_end - time_forces_begin
 
@@ -660,6 +694,81 @@
             if (itime_step .eq. nstepi) getot_initial = getot/s%natoms
 ! Check energy conservation
             write (s%logfile,605) 1000.d0*(getot/s%natoms - getot_initial)
+
+! ===========================================================================
+! ---------------------------------------------------------------------------
+!                            S O C K E T S
+! ---------------------------------------------------------------------------
+! ===========================================================================
+            if (ipi .eq. 1) then
+              allocate (msgbuffer(3*s%natoms))
+              do while (.true.)
+                call readbuffer (socket, header, msglen)
+
+                ! SOCKET - SEND FORCES
+                if (trim(header) .eq. "STATUS") then
+                  call writebuffer (socket, "HAVEDATA    ", msglen)
+                  call readbuffer (socket, header, msglen)
+                  if (trim(header) .eq. "GETFORCE") then
+                    call writebuffer (socket, "FORCEREADY  ", msglen)
+                    energy = etot/P_Hartree
+                    call writebuffer (socket, energy)
+                    call writebuffer (socket, s%natoms)
+                    do iatom = 1, s%natoms
+                      msgbuffer(3*(iatom-1)+1:3*iatom) = s%forces(iatom)%ftot*(P_abohr/P_Hartree)
+                    end do
+                    call writebuffer (socket, msgbuffer, 3*s%natoms)
+
+                    ! sends the cell and fantasy friction information
+                    ! for constant pressure - currently not used
+                    call writebuffer (socket, xcell, 9)
+                    call writebuffer (socket, 1)
+                    call writebuffer (socket, ' ', 1)
+                    exit
+                  end if
+                end if
+              end do
+
+              ! SOCKET - GET POSITIONS
+              do while (.true.)
+                call readbuffer (socket, header, msglen)
+                if (trim(header) .eq. "STATUS") then
+                  call writebuffer (socket, "READY       ", msglen)
+                  call readbuffer (socket, header, msglen)
+                  if (trim(header) .eq. "POSDATA") then
+                    ! we will read this cell information; however, FIREBALL will
+                    ! not use them - useful later when we do constant pressure.
+                    call readbuffer (socket, xcell, 9)
+                    call readbuffer (socket, xcell_inverse, 9)
+
+                    ! read the actual positions
+                    call readbuffer (socket, idof)
+                    if (idof .ne. s%natoms) then
+                      stop ' socket is communicating wrong number of atoms! '
+                    end if
+                    call readbuffer (socket, msgbuffer, 3*s%natoms)
+                    do iatom = 1, s%natoms
+                     s%atom(iatom)%ratom = msgbuffer(3*(iatom-1)+1:3*iatom)*P_abohr
+                    end do
+                    exit
+                  end if
+                end if
+              end do
+              deallocate (msgbuffer)
+            end if
+
+            ! because we are using ASE, then ratom never really gets shifted
+            if (ishiftO .eq. 1) then
+              do iatom = 1, s%natoms
+                s%atom(iatom)%ratom = s%atom(iatom)%ratom + shifter
+              end do
+            end if
+            call writeout_xyz (s, ebs, uii_uee, uxcdcc)
+            if (ishiftO .eq. 1) then
+              do iatom = 1, s%natoms
+                s%atom(iatom)%ratom = s%atom(iatom)%ratom - shifter
+              end do
+            end if
 
 ! ===========================================================================
 ! ---------------------------------------------------------------------------
@@ -689,7 +798,7 @@
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
 ! Calculate the absorption spectrum.
-          if (iwriteout_abs .eq. 1) call absorption (s)
+!         if (iwriteout_abs .eq. 1) call absorption (s)
 
 ! Destroy final arrays
           call destroy_charges (s)
