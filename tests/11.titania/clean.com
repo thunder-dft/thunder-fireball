@@ -1,6 +1,7 @@
 rm *.log
 rm *.json
 rm *.CHARGES
+rm *.NEIGHBORS*
 rm *.ENERGIES
 rm *.eigen
 rm *.denmat

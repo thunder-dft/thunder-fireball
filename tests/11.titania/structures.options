@@ -1,10 +1,10 @@
  &OPTIONS
  nstepi                 =          1
- nstepf                 =        100
- iquench                =         -3
- T_initial              =        0.0
+ nstepf                 =          1
+ iquench                =          0
+ T_initial              =      300.0
  T_final                =        0.0
- T_want                 =        0.0
+ T_want                 =      300.0
  taurelax               =        5.0
  efermi_T               =      100.0
  dt                     =       0.25
@@ -18,6 +18,5 @@
  max_scf_iterations_set =        100
  scf_tolerance_set      = 0.00000001
  beta_set               =       0.04
- qstate                 =       1.00
  Ecut_set               =      200.0
  &END
