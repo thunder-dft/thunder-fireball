@@ -1,0 +1,13 @@
+1
+001.inp
+! Write out options - leave this line as comment line or null
+&OUTPUT
+iwriteout_charges = 1
+&END
+&OPTIONS
+nstepi = 1
+nstepf = 101
+ipi = 1
+inet = 0
+host = 'thunder-ase-43f4'
+&END
