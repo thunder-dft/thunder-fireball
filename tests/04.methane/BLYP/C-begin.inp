@@ -1,0 +1,28 @@
+Carbon                   atom name
+C                        atom abbreviation
+6                        atomic number
+12.011                   atomic mass
+4.0                      number of valence electrons
+9                        exchange correlation
+2                        number of shells
+0                        angular momentum for s shell
+2.0                      Qneutral - number of electrons in s shell
+2.0                      number of electrons in s shell
+4.35                     cutoff radius for s shell
+1                        angular momentum for p shell
+2.0                      Qneutral - number of electrons in p shell
+2.0                      number of electrons in p shell
+4.80                     cutoff radius for p shell
+1                        use excited states
+2.0                      number of valence electrons (excited)
+1.0                      number of electrons in s shell (excited)
+1.0                      number of electrons in p shell (excited)
+1                        optimize basis set with x-confinement potential
+0.0                      Vo for s shell
+0.0                      r0 for s shell
+0.0                      Vo for p shell
+0.0                      r0 for p shell
+2.5                      Vo for s shell (excited)
+0.0                      r0 for s shell (excited)
+2.5                      Vo for p shell (excited)
+0.0                      r0 for p shell (excited)

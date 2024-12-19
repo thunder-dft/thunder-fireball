@@ -1,0 +1,30 @@
+C                                      atomic symbol 
+6                                      atomic number 
+12.011                                 atomic mass 
+ 4.00                                  number of valence electrons 
+basis/006.pp                           pseudopotential filename 
+basis/006_480.na0                      neutral atom filename 
+4                                      number of shells 
+0                                      l of the shell 
+ 2.00                                  occupation number of the shell
+4.35                                   cutoff 
+basis/006_435.wf1                      wavefunction filename 
+basis/006_435.na1                      orbital potential filename 
+1                                      l of the shell 
+ 2.00                                  occupation number of the shell
+4.80                                   cutoff 
+basis/006_480.wf2                      wavefunction filename 
+basis/006_480.na2                      orbital potential filename 
+0                                      l of the shell (excited)
+0.0                                    occupation number of the (excited) shell
+4.35                                   cutoff 
+basis/006_435.ewf1                     wavefunction filename (excited) 
+basis/006_435.ena1                     orbital potential filename (excited) 
+1                                      l of the shell (excited)
+0.0                                    occupation number of the (excited) shell
+4.80                                   cutoff 
+basis/006_480.ewf2                     wavefunction filename (excited) 
+basis/006_480.ena2                     orbital potential filename (excited) 
+2                                      for xc - shell of changed charge 
+0.5                                    dq of the changed shell for xc 
+0.125  0.125

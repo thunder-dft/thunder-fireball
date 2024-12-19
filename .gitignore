@@ -36,3 +36,15 @@
 *~
 results
 autom4te.cache
+*.dat
+*.dir
+*.gbs
+*.na0
+*.na1
+*.wf1
+*.ena1
+*.ewf1
+*.ena2
+*.ewf2
+*.na2
+*.wf2
