@@ -48,3 +48,13 @@ autom4te.cache
 *.ewf2
 *.na2
 *.wf2
+*.png
+*.CHARGES
+*.eigen
+*.inp
+*.json
+*.traj
+*.xyz
+*.options
+*.output
+tests/04.methane/.ipynb_checkpoints/methane-checkpoint.ipynb
