@@ -300,7 +300,7 @@
 ! Open socket communiction for interactive dynamics using ipi
 ! Calls the interface to the POSIX sockets library to open a communication
 ! channel.
-        if (ipi .eq. 1) then
+        if (my_proc .eq. 0 .and. ipi .eq. 1) then
           write (ilogfile, '(A)') 'Open socket for i-pi with ASE communcation'
           call open_socket (socket, inet, port, host)
         end if
@@ -318,8 +318,14 @@
             slogfile = s%basisfile(:len(trim(s%basisfile)) - 4)
             sjsonfile = trim(slogfile)//'.json'
             slogfile = trim(slogfile)//'.log'
-            open (unit = s%logfile, file = slogfile, status = 'replace')
-            open (unit = s%jsonfile, file = sjsonfile, status = 'replace')
+
+            if (my_proc .eq. 0) then
+              open (unit = s%logfile, file = slogfile, status = 'replace')
+              open (unit = s%jsonfile, file = sjsonfile, status = 'replace')
+            else
+              open (unit = s%logfile, file='/dev/null', status = 'replace')
+              open (unit = s%jsonfile, file='/dev/null', status = 'replace')
+            end if
           end if
           write (s%jsonfile,'(A)') '{"fireball":['
           write (ilogfile, 100) s%basisfile
@@ -338,6 +344,15 @@
           call read_charges (s)
           call set_constraints (s)
           call read_vdW_parameters (s)
+          if (nprocs .gt. 1) then
+            allocate(s%kpoints(1)%S12matrix(2,2))
+          end if
+
+          ! Slave process will go to sleep
+          if (my_proc .gt. 0) then
+            call driver_kspace(s, 0)
+            stop
+          end if
 
 !         ! SOCKET - GET POSITIONS
           if (ipi .eq. 1) then
@@ -847,6 +862,7 @@
 !                             M P I   E N D
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
+        call awake_slave
         call finalize_mpi
 
 ! Deallocate Arrays
