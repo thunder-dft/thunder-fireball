@@ -1,0 +1,12 @@
+rm output.log
+rm Fdata.inp
+rm structures.inp
+rm structures.options
+rm structures.output
+rm 001.CHARGES
+rm 001.eigen
+rm 001.inp
+rm 001.log
+rm 001.json
+rm 001.xyz
+rm WARNINGS
