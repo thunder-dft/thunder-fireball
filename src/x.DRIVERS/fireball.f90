@@ -85,6 +85,9 @@
 ! /MD
         use M_dynamics
 
+! /NAMD
+        use M_nonadiabatic_mdet   
+        
 ! /SOLVESH
         use M_kspace
         use M_density_matrix
@@ -303,6 +306,11 @@
           call set_constraints (s)
           call read_vdW_parameters (s)
 
+          write (s%logfile,*) ' Reading parameters from the structure.mdet input:  '
+          write (s%logfile,*) '  structures_mdet.inp'
+          write (s%logfile,*)
+          call initialize_mdet (s)
+          
 ! Molecular-dynamics loop
 ! ---------------------------------------------------------------------------
 ! ===========================================================================
@@ -552,6 +560,12 @@
 ! ===========================================================================
             call cpu_time (time_forces_begin)
             call initialize_forces (s)
+
+            ! nonadiabatic molecular dynamics
+            call initialize_nac (s)
+            call density_matrix_nac (s)
+            call writeout_density_nac (s)  
+            
             call densityPP_matrix (s)
             call cape_matrix (s)
 
@@ -595,9 +609,13 @@
             call Dassemble_uxc (s)
 
             call build_forces (s, rms)
-
+ 
 ! Add in the van der Waals energy and forces if there is an input file
             call calculate_vdW (s, vdW)
+            
+            ! nonadiabatic molecular dynamics 
+            call build_dij_nac (s
+            call writeout_dij_nac (s)
 
             if (iwriteout_forces .eq. 1) call writeout_forces (s)
             write (s%logfile,*)
@@ -632,9 +650,10 @@
             write (s%logfile, *)
             write (s%logfile, '(A)') ' Grand Total Energy '
             write (s%logfile, '(A)') ' ------------------ '
-            write (s%logfile,601) tkinetic
+            write (s%logfile,600) etot
+            write (s%logfile,601) s%md%tkinetic
             write (s%logfile,602) vdW
-            getot = etot + tkinetic + vdW
+            getot = etot + s%ms%tkinetic + vdW
             write (s%logfile,603) getot
             write (s%logfile,604) getot/s%natoms
             if (itime_step .eq. nstepi) getot_initial = getot/s%natoms
@@ -666,6 +685,10 @@
             call destroy_neighbors_vdW (s)
           end do ! end molecular dynamics loop
           write (s%jsonfile,'(A)') ']}'
+          
+          ! nonadiabatic molecular dynamics
+          call destroy_mdet (s)
+          
 ! ===========================================================================
 ! ---------------------------------------------------------------------------
 !    P O S T   O P T I M I Z A T I O N   C H A R A C T E R I Z A T I O N
@@ -730,8 +753,9 @@
 
 512     format (2x, 'f_total =',i6 ,3(2x,f15.6))
 
+600     format (2x, '                                 Potential Energy = ', f18.8)
 601     format (2x, '                           Nuclear Kinetic Energy = ', f18.8)
-602     format (2x, '                            van der Waal''s Energy = ', f18.8)
+602     format (2x, '                           van der Waal''s Energy = ', f18.8)
 603     format (2x, ' Grand Total Energy (Nuclear Kinetic + Potential) = ', f18.8)
 604     format (2x, '                      Grand Total Energy per Atom = ', f18.8)
 605     format (2x, '                               deltaE/atom  (meV) = ', f18.8)
