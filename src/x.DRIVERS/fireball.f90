@@ -660,6 +660,7 @@
 ! Check energy conservation
             write (s%logfile,605) 1000.d0*(getot/s%natoms - getot_initial)
 
+            call nonadiabatic_mdet (s, itime_step)
             call md (s, itime_step)
             call writeout_xyz (s, ebs, uii_uee, uxcdcc)
 
