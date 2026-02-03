@@ -614,7 +614,7 @@
             call calculate_vdW (s, vdW)
             
             ! nonadiabatic molecular dynamics 
-            call build_dij_nac (s
+            call build_dij_nac (s)
             call writeout_dij_nac (s)
 
             if (iwriteout_forces .eq. 1) call writeout_forces (s)
@@ -653,7 +653,7 @@
             write (s%logfile,600) etot
             write (s%logfile,601) s%md%tkinetic
             write (s%logfile,602) vdW
-            getot = etot + s%ms%tkinetic + vdW
+            getot = etot + s%md%tkinetic + vdW
             write (s%logfile,603) getot
             write (s%logfile,604) getot/s%natoms
             if (itime_step .eq. nstepi) getot_initial = getot/s%natoms
